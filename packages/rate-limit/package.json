@@ -1,0 +1,20 @@
+{
+	"name": "@xidoke/rate-limit",
+	"version": "0.0.1",
+	"private": true,
+	"description": "Rate limiting package with Redis support for URL Shortener",
+	"main": "./src/index.ts",
+	"types": "./src/index.ts",
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"dependencies": {
+		"@nestjs/common": "^11.1.7",
+		"@nestjs/core": "^11.1.7",
+		"ioredis": "^5.8.2",
+		"@xidoke/types": "workspace:*"
+	},
+	"devDependencies": {
+		"typescript": "^5.9.3"
+	}
+}

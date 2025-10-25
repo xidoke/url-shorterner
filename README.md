@@ -1,26 +1,44 @@
-# Turborepo starter
+# URL Shortener - Production-Ready Monorepo
 
-This Turborepo starter is maintained by the Turborepo core team.
+A scalable URL shortener service built with NestJS, Prisma, and Redis, optimized for high performance and production deployment.
 
-## Using this example
+## 🚀 Quick Start
 
-Run the following command:
+### Prerequisites
 
-```sh
-npx create-turbo@latest
+- **Node.js:** `>=22.0.0` (LTS jod v22.21.0 recommended)
+- **pnpm:** `>=10.0.0`
+- **PostgreSQL:** 14+ (for production)
+- **Redis:** 6+ (optional, for rate limiting and caching)
+
+### Installation
+
+```bash
+# Install dependencies
+pnpm install
+
+# Generate Prisma Client
+pnpm --filter=@xidoke/database db:generate
+
+# Start development server
+pnpm dev
 ```
 
-## What's inside?
+## 📦 What's inside?
 
-This Turborepo includes the following packages/apps:
+This Turborepo monorepo includes the following packages and apps:
 
 ### Apps and Packages
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
+- **`apps/api`**: NestJS backend API for URL shortening service
+- **`packages/database`**: Prisma schema and database utilities
+- **`packages/types`**: Shared TypeScript types, constants, and utilities
+- **`packages/auth`**: Authentication and authorization (JWT, guards, decorators)
+- **`packages/rate-limit`**: Rate limiting with Redis/Memory storage
+- **`packages/api-standards`**: Standardized API responses and error handling
+- **`packages/typescript-config`**: Shared TypeScript configurations
 
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
+Each package/app is 100% [TypeScript](https://www.typescriptlang.org/) with strict mode enabled.
 
 ### Utilities
 

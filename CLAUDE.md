@@ -4,124 +4,375 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a URL shortener monorepo built with Turborepo. The project uses pnpm as the package manager and requires Node.js >=20.
+A production-ready URL shortener service built as a Turborepo monorepo with NestJS, targeting 100K QPS with <20ms p50 latency. Currently in **Sprint 2** focusing on authentication, authorization, and security infrastructure.
 
-### Architecture
+## MCP Context7 Integration
 
-The monorepo is organized into:
+This repository has **MCP Context7** enabled to provide access to up-to-date official documentation for all libraries and frameworks used.
 
-- **apps/api**: NestJS backend application for the URL shortener API
-  - Entry point: [apps/api/src/main.ts](apps/api/src/main.ts)
-  - Runs on port 3000 (configurable via PORT env var)
-  - Standard NestJS module-controller-service pattern
+**IMPORTANT: Always consult official documentation when:**
+- Implementing features with NestJS, Prisma, or other frameworks
+- Using library-specific APIs or decorators
+- Troubleshooting framework-specific issues
+- Following best practices for third-party packages
 
-- **packages/typescript-config**: Shared TypeScript configurations used across the monorepo
+**How to use Context7:**
+```typescript
+// Before implementing, fetch docs for accurate API usage:
+// Use mcp__context7__resolve-library-id and mcp__context7__get-library-docs
 
-Note: The `docs` and `web` Next.js apps mentioned in the README have been removed from this repository.
+// Example: Check NestJS Passport strategy implementation
+// Example: Verify Prisma schema syntax and relations
+// Example: Confirm Redis client methods (ioredis)
+```
 
-## Development Commands
+**Priority order for decision-making:**
+1. **Official docs via Context7** - Always check first to avoid outdated patterns
+2. **Existing codebase patterns** - Follow established conventions in this repo
+3. **Project documentation** - Reference `docs/` for architecture decisions
 
-### Package Manager
-This project uses **pnpm** (version 10.13.1). Always use `pnpm` commands, not npm or yarn.
+This prevents errors from outdated knowledge and ensures compatibility with current package versions.
 
-### Root Level Commands
+## Essential Commands
 
+### Development
 ```bash
 # Install dependencies
 pnpm install
 
-# Run all apps in development mode
+# Generate Prisma Client (required before first run)
+pnpm --filter=@xidoke/database db:generate
+
+# Start all apps in dev mode
 pnpm dev
 
-# Build all apps
+# Build all apps and packages
 pnpm build
 
-# Type checking across all packages
+# Type checking across workspace
 pnpm check-types
 
-# Linting and formatting with Biome
-pnpm biome:lint      # Lint with auto-fix
-pnpm biome:format    # Format code
-pnpm biome:check     # Run both lint and format
+# Code quality
+pnpm biome:check      # Lint + format
+pnpm biome:lint       # Lint only
+pnpm biome:format     # Format only
 ```
 
-### API Application Commands
-
-Navigate to `apps/api` or use turbo filters:
-
+### Database Operations
 ```bash
-# Development
-pnpm --filter=@xidoke/url-shortener-api dev
-# Or: cd apps/api && pnpm start:dev
+# Generate Prisma Client
+pnpm --filter=@xidoke/database db:generate
 
-# Production build and run
-pnpm --filter=@xidoke/url-shortener-api build
-pnpm --filter=@xidoke/url-shortener-api start:prod
+# Push schema changes (dev only)
+pnpm --filter=@xidoke/database db:push
 
-# Testing
-pnpm --filter=@xidoke/url-shortener-api test           # Run unit tests
-pnpm --filter=@xidoke/url-shortener-api test:watch    # Watch mode
-pnpm --filter=@xidoke/url-shortener-api test:cov      # With coverage
-pnpm --filter=@xidoke/url-shortener-api test:e2e      # End-to-end tests
+# Create and apply migrations
+pnpm --filter=@xidoke/database db:migrate
 
-# Debug mode
-pnpm --filter=@xidoke/url-shortener-api start:debug
+# Production migrations
+pnpm --filter=@xidoke/database db:migrate:deploy
+
+# Seed database
+pnpm --filter=@xidoke/database db:seed
+
+# Open Prisma Studio
+pnpm --filter=@xidoke/database db:studio
 ```
 
-### Turborepo Filters
-
-To run commands for specific packages, use the `--filter` flag:
-
+### Testing (API)
 ```bash
-# Build only the API
-turbo build --filter=@xidoke/url-shortener-api
+cd apps/api
 
-# Dev mode for specific package
+# Run all tests
+pnpm test
+
+# Watch mode
+pnpm test:watch
+
+# Coverage report
+pnpm test:cov
+
+# E2E tests
+pnpm test:e2e
+
+# Debug tests
+pnpm test:debug
+```
+
+### Working with Specific Packages
+```bash
+# Use Turbo filters for package-specific commands
+turbo build --filter=@xidoke/auth
 turbo dev --filter=@xidoke/url-shortener-api
 ```
 
-## Code Style and Formatting
+## Architecture
 
-This project uses **Biome** (not ESLint/Prettier) for linting and formatting:
+### Monorepo Structure
 
-- **Indentation**: Tabs (not spaces)
-- **Quotes**: Double quotes for JavaScript/TypeScript
-- **Import organization**: Automatically enabled via Biome assist
-- Configuration: [biome.json](biome.json)
+This is a **pnpm + Turborepo** monorepo with:
 
-Always run `pnpm biome:check` before committing to ensure code style compliance.
+- **`apps/api/`** - NestJS backend API (main application)
+- **`packages/database/`** - Prisma schema and database client
+- **`packages/types/`** - Shared TypeScript types, constants, and utilities
+- **`packages/auth/`** - JWT authentication, guards, decorators (workspace package)
+- **`packages/rate-limit/`** - Redis/memory-based rate limiting (workspace package)
+- **`packages/api-standards/`** - Standardized API responses and error handling (workspace package)
+- **`packages/typescript-config/`** - Shared TypeScript configurations
 
-## TypeScript Configuration
+### Application Architecture (apps/api/src/)
 
-This monorepo uses **shared TypeScript configurations** from `packages/typescript-config`:
+The API follows **NestJS modular architecture** organized as:
 
-- **base.json**: Common settings for all TypeScript projects (strict mode, ES2022, NodeNext resolution)
-- **nestjs.json**: Extends base.json with NestJS-specific settings (decorators, relaxed strictness)
-- **nextjs.json**: For Next.js applications
-- **react-library.json**: For React library packages
+```
+apps/api/src/
+├── infrastructure/          # Shared infrastructure concerns
+│   ├── database/           # Prisma service and module
+│   ├── cache/              # L1 (local) + L2 (Redis) caching
+│   ├── id-generator/       # Snowflake ID + Base62 encoding
+│   └── monitoring/         # Health checks, metrics
+│
+├── modules/                # Feature modules (domain logic)
+│   ├── links/             # Link CRUD operations
+│   ├── redirect/          # High-performance redirect service
+│   └── users/             # User management
+│
+└── common/                # Shared utilities (guards, decorators, etc.)
+```
 
-The API app extends `nestjs.json` using relative path: `"extends": "../../packages/typescript-config/nestjs.json"`
+**Key Architectural Patterns:**
 
-Key settings for NestJS:
-- Decorators enabled (`experimentalDecorators`, `emitDecoratorMetadata`)
-- Target: ES2023, Module: NodeNext
-- `strict` mode enabled but with `noImplicitAny: false` for NestJS compatibility
+1. **Repository Pattern**: Each feature module has a `.repository.ts` that encapsulates Prisma queries
+2. **Service Layer**: Business logic lives in `.service.ts` files
+3. **DTO Validation**: All inputs validated using `class-validator` decorators
+4. **Workspace Packages**: Shared packages (`@xidoke/*`) are imported from workspace, not npm
 
-## Testing
+### Multi-Tier Caching Strategy
 
-The API uses Jest for testing:
+The redirect service implements a **3-tier cache hierarchy**:
 
-- Unit tests: Located alongside source files with `.spec.ts` suffix
-- E2E tests: Located in `apps/api/test/` directory
-- Test command uses the configuration in [apps/api/package.json](apps/api/package.json) jest section
-- E2E tests use separate Jest config at `apps/api/test/jest-e2e.json`
+1. **L1 (Local Cache)**: In-memory LRU cache per API instance (~1ms latency, 20-30% hit rate)
+2. **L2 (Redis)**: Shared cache across all instances (~2-5ms latency, 60-70% hit rate)
+3. **L3 (PostgreSQL)**: Source of truth (~10-50ms latency, 10% cache miss)
 
-## Turborepo Task Pipeline
+**Cache invalidation** uses Redis Pub/Sub to notify all API instances when links are updated.
 
-Tasks are configured in [turbo.json](turbo.json):
+### ID Generation
 
-- **build**: Has dependency graph (dependsOn: ["^build"]), outputs to `.next/**`, reads `.env*` files
-- **check-types**: Has dependency graph, runs type checking across packages
-- **dev**: Not cached, persistent task for development servers
+Uses **Snowflake IDs** for distributed, time-sortable unique identifiers:
+- 64-bit: `[timestamp:41][region:3][worker:10][sequence:10]`
+- Configured via `REGION_ID` and `WORKER_ID` environment variables
+- Converted to **Base62** for short codes (human-friendly URLs)
 
-The dependency graph means tasks will run in topological order based on package dependencies.
+### Database Schema
+
+PostgreSQL with Prisma ORM:
+- **Users**: Email/password auth, tier-based rate limits (FREE/PAID/ENTERPRISE)
+- **Links**: Snowflake IDs, short codes (unique), long URLs, soft deletes
+- **Collections**: Organize links into groups
+- **IdempotencyKeys**: Prevent duplicate link creation (API idempotency)
+
+**Important**: Always run `db:generate` after modifying `schema.prisma` to regenerate the Prisma Client.
+
+### Shared Packages
+
+When working with workspace packages (`packages/auth/`, `packages/rate-limit/`, etc.):
+
+1. **Import via workspace protocol**: `import { AuthGuard } from '@xidoke/auth'`
+2. **Modifications rebuild dependents**: TurboRepo handles incremental builds
+3. **Package exports**: Check `index.ts` for exported APIs
+4. **NestJS modules**: Most packages export a `.module.ts` for DI integration
+
+## Current Sprint Context
+
+**Sprint 2: Authentication & Security** (see `docs/planning/current-sprint.md`)
+
+Focus areas:
+1. JWT-based authentication with Passport.js
+2. Role-based access control (RBAC) using decorators
+3. Rate limiting per user tier (Redis-backed)
+4. Standardized API responses and error codes
+
+**Important Sprint Files:**
+- `packages/auth/` - Authentication package (in progress)
+- `packages/rate-limit/` - Rate limiting package (in progress)
+- `packages/api-standards/` - API standardization (in progress)
+
+## Development Guidelines
+
+### Using Official Documentation (Context7)
+
+**Before implementing any feature**, fetch official documentation:
+
+```bash
+# For NestJS features (auth, guards, interceptors, etc.)
+Use: mcp__context7__resolve-library-id with "nestjs"
+Then: mcp__context7__get-library-docs with the library ID
+
+# For Prisma schema or queries
+Use: mcp__context7__get-library-docs for Prisma
+
+# For Redis operations (ioredis)
+Use: mcp__context7__get-library-docs for ioredis
+
+# For Passport.js strategies
+Use: mcp__context7__get-library-docs for passport
+```
+
+**Examples of when to check docs:**
+- Implementing JWT strategy → Check NestJS Passport docs
+- Writing Prisma migrations → Check Prisma migration docs
+- Using Redis commands → Check ioredis API reference
+- Creating custom decorators → Check NestJS custom decorators guide
+- Setting up rate limiting → Check NestJS throttler or Redis patterns
+
+### Adding a New Module
+
+```bash
+# Generate NestJS resources
+cd apps/api
+npx nest generate module modules/feature-name
+npx nest generate controller modules/feature-name
+npx nest generate service modules/feature-name
+```
+
+Then create:
+- `dto/` - Input/output DTOs with validation
+- `entities/` - TypeScript entity classes
+- `interfaces/` - TypeScript interfaces
+- `feature-name.repository.ts` - Prisma queries
+
+### Environment Variables
+
+Copy `.env.example` to `.env` and configure:
+- `DATABASE_URL` - PostgreSQL connection string
+- `REGION_ID` / `WORKER_ID` - Snowflake ID generation
+- `REDIS_HOST` / `REDIS_PORT` - Redis cache (optional, falls back to local cache)
+- `JWT_SECRET` - JWT signing key (Sprint 2)
+
+### Code Quality Tools
+
+- **Biome**: Linting and formatting (replaces ESLint + Prettier)
+  - Configured for NestJS with parameter decorators support
+  - Rules disabled: `noExplicitAny`, `noStaticOnlyClass`, `noBannedTypes` (NestJS patterns)
+  - Auto-organizes imports on save
+- **TypeScript**: Strict mode enabled across all packages
+- **Jest**: Unit and E2E testing
+
+Always run `pnpm biome:check` before committing.
+
+### Database Migrations
+
+Use Prisma migrations for schema changes:
+
+```bash
+# Development: Create migration
+pnpm --filter=@xidoke/database db:migrate
+
+# Production: Apply migrations
+pnpm --filter=@xidoke/database db:migrate:deploy
+```
+
+**Never** use `db:push` in production - it skips migration history.
+
+## Common Patterns
+
+### Protecting Routes with Auth
+
+```typescript
+import { UseGuards } from '@nestjs/common';
+import { AuthGuard, Roles, CurrentUser } from '@xidoke/auth';
+
+@UseGuards(AuthGuard)
+@Controller('links')
+export class LinksController {
+  @Roles('PAID', 'ENTERPRISE')  // Restrict by tier
+  @Post()
+  createLink(@CurrentUser() user: User) {
+    // user is extracted from JWT
+  }
+
+  @Public()  // Bypass auth for this endpoint
+  @Get(':shortCode')
+  redirect() { }
+}
+```
+
+### Applying Rate Limits
+
+```typescript
+import { RateLimit } from '@xidoke/rate-limit';
+
+@RateLimit({ limit: 10, window: 3600 })  // 10 per hour
+@Post('links')
+createLink() { }
+```
+
+### Standardized API Responses
+
+```typescript
+import { ApiResponse } from '@xidoke/api-standards';
+
+return ApiResponse.success(data, { pagination });
+// or
+throw ApiResponse.error(ErrorCodes.LINK_NOT_FOUND);
+```
+
+### Using the Cache Service
+
+```typescript
+// Check L1 → L2 → L3 (database)
+const link = await cacheService.getOrFetch(
+  `link:${shortCode}`,
+  () => prisma.link.findUnique({ where: { shortCode } })
+);
+```
+
+## Performance Considerations
+
+- **Redirect endpoint**: Must be <20ms p50 latency (critical path)
+- **L1 cache**: Use for hot paths (most-requested links)
+- **Database queries**: Always use indexes on `shortCode`, `userId`
+- **Avoid N+1**: Use Prisma `include` or `select` with relations
+- **Batch operations**: Use `createMany`, `updateMany` where possible
+
+## Documentation
+
+Comprehensive docs in `docs/`:
+- **`INDEX.md`** - Documentation hub (start here)
+- **`architecture/tech-stack.md`** - Full technology breakdown and scaling strategy
+- **`planning/current-sprint.md`** - Current sprint tasks and priorities
+- **`guides/quick-start.md`** - Setup guide
+- **`decisions/`** - Architecture Decision Records (ADRs)
+
+When adding features, consider updating relevant documentation.
+
+## Troubleshooting
+
+### Prisma Client not found
+```bash
+pnpm --filter=@xidoke/database db:generate
+```
+
+### Type errors after schema change
+```bash
+pnpm --filter=@xidoke/database db:generate
+pnpm check-types
+```
+
+### Redis connection errors
+The app falls back to local cache if Redis is unavailable. For development without Redis, simply don't set `REDIS_HOST` in `.env`.
+
+### Biome errors
+```bash
+pnpm biome:check  # Auto-fix most issues
+```
+
+## Scaling Path
+
+Currently **Stage 1** (single server, 1K-10K QPS). Future stages:
+- **Stage 2**: Horizontal scaling with Redis (10K-50K QPS)
+- **Stage 3**: Database replicas + CDN (50K-100K QPS)
+- **Stage 4**: Microservices + multi-region (100K+ QPS)
+
+See `docs/architecture/tech-stack.md` for full scaling strategy.

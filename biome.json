@@ -23,12 +23,25 @@
 	"linter": {
 		"enabled": true,
 		"rules": {
-			"recommended": true
+			"recommended": true,
+			"suspicious": {
+				"noExplicitAny": "off"
+			},
+			"style": {
+				"noNonNullAssertion": "off"
+			},
+			"complexity": {
+				"noStaticOnlyClass": "off",
+				"noBannedTypes": "off"
+			}
 		}
 	},
 	"javascript": {
 		"formatter": {
 			"quoteStyle": "double"
+		},
+		"parser": {
+			"unsafeParameterDecoratorsEnabled": true
 		}
 	},
 	"assist": {

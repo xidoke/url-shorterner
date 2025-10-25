@@ -12,11 +12,13 @@
 	"devDependencies": {
 		"@biomejs/biome": "2.2.7",
 		"@nestjs/cli": "^11.0.10",
+		"@swc/core": "^1.13.21",
+		"tsup": "^8.5.0",
 		"turbo": "^2.5.8",
 		"typescript": "5.9.2"
 	},
 	"packageManager": "pnpm@10.13.1",
 	"engines": {
-		"node": ">=20"
+		"node": ">=22"
 	}
 }
